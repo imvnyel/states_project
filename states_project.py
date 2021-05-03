@@ -1,69 +1,115 @@
 import pandas as pd
-#import PySimpleGUI as sg
+import Easy_df as edf
+import PySimpleGUI as sg
+
 
 filename = 'C:/Users/ekaunda/Downloads/Date-Year-State-Flow-Country-HS6.csv'
 
 df_to_export = []
 
-def create_dataframe(filename):
+def GeoGui():
+	columns = []
+	menu_def = [['File', 'Exit'],
+	['Help', 'About']]
 
-	if '.csv' in filename:
-		df = pd.read_csv(filename)
-	elif '.xlsx' in filename:
-		df = pd.read_excel(filename)
-	else:
-		print('INVALID FILE FORMAT!\n use .csv or .xlsx files')
-
-	return df
+	#Theme 
+	sg.theme('dark grey 9')
 
 
-def parse_dataframes(df):
-	cols = [str(i) for i in df.columns.tolist()]
+	#set GUI layout
+	layout = [[sg.Menu(menu_def, )],
+	[sg.Text('Select File (.xlsx or .csv): '), sg.In(key='Report'), sg.FileBrowse(target='Report', size=(10, 1))],
+	[sg.Button('Intialize', size=(72, 1))],
+	[sg.Text('Group by column: '), sg.Combo(columns, key='ChoiceColumn', size=(30, 6)), sg.Button('Group', size=(35, 1))],
+	[sg.Button('Export to Excel', size=(35, 1)), sg.Button('Export to CSV', size=(35, 1))],
+	[sg.Multiline(size=(100,20), autoscroll=True, write_only=True, auto_refresh=True, reroute_stdout=True, key='print_output')]]
 
-	for x in range(len(cols)):
-		print(x+1, cols[x])
+	window = sg.Window('Excel Parser', layout, auto_size_buttons=True, auto_size_text=True ,resizable=True)
 
-	choice = input('Choose a column to groupby: ')
-	s = int(choice) - 1
-	print('You have chosen to group columns by {0}'.format(cols[s]))
+		#Loop
+	while True:
+		event, values = window.read()
+		#db_init()
 
-	column_name = cols[s]
+		#Initialize project. Open file, convert into a Pandas dataframe, return cleaned dataframe. 
+		if event == 'Intialize':
+			file_to_read = values['Report']
+			window['print_output']('')
+			try:
+				d = edf.Dataframe()
+				new_df = d.create_df(file_to_read)
+				columns = [str(i) for i in new_df.columns.tolist()]
+				print('Preview\n', new_df.head())
+				window.Refresh()
+				window.FindElement('ChoiceColumn').Update(values=columns)
+			except Exception as e: print(e)
 
-	names = [x for x in df[column_name].unique()]
-	grouped = []
+		#Initialize project. Open file, convert into a Pandas dataframe, return cleaned dataframe. 
+		if event == 'Group':
+			column_name = values['ChoiceColumn']
+			window['print_output']('')
+			try:
+				d.group_df(column_name)
+				print('{0} Dataframes ready for export'.format(len(d.dataframes)))
+				print('Content: ')
+				for i in d.dataframes:
+					print(i.keys())
+				window.Refresh()
+			except Exception as e: print(e)
 
-	for name in names:
-		grouped_df = df[df[column_name] == name]
-		grouped.append(grouped_df)
-	return grouped, names
+		#Export dataframe with completed DM columns to Excel
+		if event == 'Export to Excel':
+			file_to_read = values['Report']
+			try:
 
-#Export dataframes to csv files
-def csv_exporter(frames, names):
-    export_folder = 'C:/Users/ekaunda/Desktop/outputs/'
-    file_out = [export_folder + name + '.csv' for name in names]
-    df_dict = [{k:v} for k,v in zip(names, frames)]
+				#export dataframe(s)
+				print('Staring Excel Exporter...')
+				d.excel_exporter()
 
-    for i in range(len(df_dict)):
-        for k,v in df_dict[i].items():
-            v.to_csv(file_out[i])
-            print('Successfully exported {0} data to {1}'.format(k, export_folder))
+				print('Exporting New Excel...')
+				print('Successful!')
 
-#Export dataframes to excel files
-def excel_exporter(frames, names):
-	export_folder = 'C:/Users/ekaunda/Desktop/outputs/'
-	file_out = [export_folder + name + '.excel' for name in names]
-	df_dict = [{k:v} for k,v in zip(names, frames)]
+				#log_db(file_to_read)
+				window.Refresh()
+			except Exception as e: print(e)
 
-	for i in range(len(df_dict)):
-		for k,v in df_dict[i].items():
-			v.to_excel(file_out[i])
-			print('Successfully exported {0} data to {1}'.format(k, export_folder))
+		#Export dataframe with completed DM columns to Excel
+		if event == 'Export to CSV':
+			file_to_read = values['Report']
+			try:
 
+				#export dataframe(s)
+				print('Staring CSV Exporter...')
+				d.csv_exporter()
+
+				print('Exporting to Database...')
+				print('Successful!')
+				#log_db(file_to_read)
+				window.Refresh()
+
+
+			except Exception as e: print(e)
+
+		if event == 'About':      
+			sg.popup('About this program', 'Version 1.0', 'Created by Emmanuel Kaunda')
+
+		if event == sg.WINDOW_CLOSED or event == 'Exit':
+			#c.close()
+			#l.close()
+			break
 
 #######RUN PROGRAM#######
-df = create_dataframe(filename)
+
+GeoGui()
+
+'''df = edf.Dataframe(filename)
+df.create_dataframe()
+output = df.group_df()
+df.csv_exporter(output)'''
+
+'''df = create_dataframe(filename)
 frames, names = parse_dataframes(df)
 if '.csv' in filename:
 	csv_exporter(frames, names)
 elif '.xlsx' in filename:
-	excel_exporter(frames, names)
+	excel_exporter(frames, names)'''
